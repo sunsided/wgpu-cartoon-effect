@@ -1,4 +1,5 @@
 mod cartoon;
+mod halftone;
 mod kuwahara;
 mod paint;
 mod splat;
@@ -37,6 +38,9 @@ pub static EFFECTS: &[EffectInfo] = &[
     kuwahara::INFO,
     paint::INFO,
     splat::INFO,
+    halftone::HALFTONE,
+    halftone::DUOTONE,
+    halftone::CMYK,
 ];
 
 /// Compiled pipelines of every effect.
@@ -46,6 +50,7 @@ pub struct Effects {
     kuwahara: kuwahara::Kuwahara,
     paint: paint::Paint,
     splat: splat::Splat,
+    halftone: halftone::Halftone,
 }
 
 impl Effects {
@@ -56,6 +61,7 @@ impl Effects {
             kuwahara: kuwahara::Kuwahara::new(device),
             paint: paint::Paint::new(device),
             splat: splat::Splat::new(device),
+            halftone: halftone::Halftone::new(device),
         }
     }
 
@@ -74,6 +80,11 @@ impl Effects {
             "kuwahara" => self.kuwahara.run(b, f, input, params),
             "paint" => self.paint.run(b, &self.kuwahara, f, input, params),
             "splat" => self.splat.run(b, &self.paint, f, input, params),
+            "halftone" => self.halftone.run(b, f, input, params, halftone::Mode::Mono),
+            "duotone" => self
+                .halftone
+                .run(b, f, input, params, halftone::Mode::Duotone),
+            "cmyk" => self.halftone.run(b, f, input, params, halftone::Mode::Cmyk),
             _ => return Err(Error::UnknownEffect(key.to_owned())),
         })
     }

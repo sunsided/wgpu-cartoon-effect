@@ -379,6 +379,7 @@ dependencies = [
  "bytemuck",
  "log",
  "pollster",
+ "rotated-grid",
  "serde",
  "serde_json",
  "thiserror",
@@ -1054,6 +1055,12 @@ name = "renderdoc-sys"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
+
+[[package]]
+name = "rotated-grid"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d2cb06b8c576949260dcc1f5543e2bdabd9359d8b675a333b109125f948c3e6"
 
 [[package]]
 name = "rustc-hash"
