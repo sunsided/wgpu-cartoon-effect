@@ -2,7 +2,7 @@
 
 Painterly image filters (cartoon, oil paint, brush strokes, and fitted Gaussian splats) as WGSL compute shaders on [wgpu], running natively and in the browser.
 
-In 2023 I wrote [opencv-cartoon-effect], a faux cartoon filter that swapped the median blur of the usual tutorials for anisotropic diffusion and mean-shift filtering. It beat the blog posts, but it was still barebones. (And, as I said, also three years ago.) This is the second attempt, with a bigger scope: modern Rust, everything on the GPU, one core library behind a CLI and a web UI, and, since I was at it anyway, a look at actual brush strokes and splats rather than only filters. Still purely off a single image; nothing 3D here.
+In 2023 I wrote [opencv-cartoon-effect], a faux cartoon filter that swapped the median blur of the usual tutorials for anisotropic diffusion and mean-shift filtering. It beat the blog posts, but it was still barebones. (And, an even better reason for rewriting things: also three years ago by now.) This is the second attempt, with a bigger scope: modern Rust, everything on the GPU, one core library behind a CLI and a web UI, and, since I was at it anyway, a look at actual brush strokes and splats rather than only filters. Still purely off a single image; nothing 3D here.
 
 | Input                       | Cartoon                    | Oil paint                   |
 |-----------------------------|----------------------------|-----------------------------|
