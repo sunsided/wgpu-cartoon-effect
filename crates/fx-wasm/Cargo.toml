@@ -17,3 +17,6 @@ js-sys.workspace = true
 web-sys = { workspace = true, features = ["HtmlCanvasElement"] }
 console_error_panic_hook.workspace = true
 log.workspace = true
+
+[lints]
+workspace = true

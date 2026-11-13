@@ -30,3 +30,7 @@ console_error_panic_hook = "0.1.7"
 
 [profile.release]
 lto = "thin"
+
+[workspace.lints.clippy]
+# Modules are `foo.rs` + `foo/`, never `foo/mod.rs`.
+mod_module_files = "deny"
