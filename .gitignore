@@ -1,0 +1,11 @@
+/target
+/.idea
+/out
+crates/fx-wasm/pkg
+crates/fx-playground/dist
+web/node_modules
+web/.svelte-kit
+web/build
+web/.yarn/*
+!web/.yarn/releases
+/.task

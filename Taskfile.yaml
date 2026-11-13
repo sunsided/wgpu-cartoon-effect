@@ -1,0 +1,49 @@
+version: '3'
+
+tasks:
+  test:
+    desc: Run core tests (headless GPU; WGPU_FORCE_FALLBACK_ADAPTER=1 for software)
+    cmd: cargo test -p fx
+
+  cli:
+    desc: "Run the CLI, e.g. task cli -- cartoon assets/grumpy-cat.jpg -o out/cartoon.png"
+    cmd: cargo run --release -p fx-cli -- {{.CLI_ARGS}}
+
+  samples:
+    desc: Render every effect on the sample image into out/
+    cmds:
+      - mkdir -p out
+      - for e in $(cargo run -q --release -p fx-cli -- --list | jq -r '.[].key'); do cargo run -q --release -p fx-cli -- "$e" assets/grumpy-cat.jpg -o "out/$e.png"; done
+
+  wasm:
+    desc: Build the wasm package consumed by web/
+    sources: [crates/fx/**/*, crates/fx-wasm/src/**/*]
+    generates: [crates/fx-wasm/pkg/fx_wasm_bg.wasm]
+    cmd: wasm-pack build crates/fx-wasm --target web --release
+
+  trunk:
+    desc: Bare Rust dev page on :8180 (?effect=<key>&<param>=<value>)
+    dir: crates/fx-playground
+    cmd: trunk serve --port 8180
+
+  web:
+    desc: SvelteKit dev server
+    deps: [wasm]
+    dir: web
+    cmds:
+      - corepack yarn install
+      - corepack yarn dev
+
+  web:build:
+    desc: Static build into web/build
+    deps: [wasm]
+    dir: web
+    cmds:
+      - corepack yarn install
+      - corepack yarn build
+
+  check:
+    cmds:
+      - cargo clippy --workspace --all-targets
+      - cargo clippy -p fx-wasm -p fx-playground --target wasm32-unknown-unknown
+      - cd web && corepack yarn check

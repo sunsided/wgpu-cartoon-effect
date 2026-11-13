@@ -1,0 +1,19 @@
+[package]
+name = "fx-cli"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "fx"
+path = "src/main.rs"
+
+[dependencies]
+fx.workspace = true
+clap.workspace = true
+image.workspace = true
+pollster.workspace = true
+anyhow.workspace = true
+env_logger.workspace = true
+log.workspace = true
+serde_json.workspace = true
