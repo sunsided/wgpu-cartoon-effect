@@ -22,7 +22,7 @@
 				const r = await createRenderer(canvas);
 				effects = r.effects;
 				values = Object.fromEntries(effects.map((e) => [e.key, defaults(e)]));
-				effectKey = effects.at(-1)?.key ?? 'identity';
+				effectKey = effects.some((e) => e.key === 'kuwahara') ? 'kuwahara' : 'identity';
 				renderer = r.renderer;
 				await loadImage(await (await fetch(sample)).blob());
 			} catch (e) {
