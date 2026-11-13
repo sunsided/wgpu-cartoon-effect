@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import sample from '../../../assets/grumpy-cat.jpg';
-	import { createRenderer, decodeImage, defaults, type EffectInfo, type Renderer } from '#lib/fx.js';
+	import { createRenderer, decodeImage, defaults, type EffectInfo, type ParamDesc, type Renderer } from '#lib/fx.js';
 
 	let canvas: HTMLCanvasElement;
 	let renderer = $state.raw<Renderer | null>(null);
@@ -76,6 +76,9 @@
 		}, 'image/png');
 	}
 
+	// Parameters that only take 0 or 1 are on/off switches.
+	const isToggle = (p: ParamDesc) => p.min === 0 && p.max === 1 && p.step === 1;
+
 	function onDrop(e: DragEvent) {
 		e.preventDefault();
 		dragging = false;
@@ -125,10 +128,22 @@
 
 		{#if current && values[current.key]}
 			{#each current.params as p (p.key)}
-				<label class="field">
-					<span>{p.label} <output>{values[current.key][p.key]}</output></span>
-					<input type="range" min={p.min} max={p.max} step={p.step} bind:value={values[current.key][p.key]} />
-				</label>
+				{#if isToggle(p)}
+					<label class="toggle">
+						{p.label}
+						<input
+							type="checkbox"
+							role="switch"
+							checked={values[current.key][p.key] === p.max}
+							onchange={(e) => (values[current.key][p.key] = e.currentTarget.checked ? p.max : p.min)}
+						/>
+					</label>
+				{:else}
+					<label class="field">
+						<span>{p.label} <output>{values[current.key][p.key]}</output></span>
+						<input type="range" min={p.min} max={p.max} step={p.step} bind:value={values[current.key][p.key]} />
+					</label>
+				{/if}
 			{/each}
 			{#if current.params.length}
 				<button onclick={() => (values[current.key] = defaults(current))}>Reset</button>
@@ -200,6 +215,46 @@
 	.field span {
 		display: flex;
 		justify-content: space-between;
+	}
+	.toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		cursor: pointer;
+	}
+	.toggle input {
+		appearance: none;
+		position: relative;
+		flex: none;
+		width: 2.25rem;
+		height: 1.25rem;
+		margin: 0;
+		border-radius: 999px;
+		background: #3a3b42;
+		cursor: pointer;
+		transition: background 0.15s;
+	}
+	.toggle input::before {
+		content: '';
+		position: absolute;
+		top: 0.125rem;
+		left: 0.125rem;
+		width: 1rem;
+		height: 1rem;
+		border-radius: 50%;
+		background: #d8d8dc;
+		transition: transform 0.15s;
+	}
+	.toggle input:checked {
+		background: #3b82f6;
+	}
+	.toggle input:checked::before {
+		transform: translateX(1rem);
+	}
+	.toggle input:focus-visible {
+		outline: 2px solid #8ab4f8;
+		outline-offset: 2px;
 	}
 	output {
 		font-variant-numeric: tabular-nums;
