@@ -41,3 +41,23 @@ fn fetch(t: texture_2d<f32>, p: vec2<i32>) -> vec4<f32> {
     let size = vec2<i32>(textureDimensions(t));
     return textureLoad(t, clamp(p, vec2(0), size - 1), 0);
 }
+
+// PCG hash, https://www.jcgt.org/published/0009/03/02/
+fn hash_u32(v: u32) -> u32 {
+    let state = v * 747796405u + 2891336453u;
+    let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+fn hash01(v: u32) -> f32 {
+    return f32(hash_u32(v)) / 4294967295.0;
+}
+
+// Smooth 1D value noise in [0, 1].
+fn noise1(x: f32, seed: u32) -> f32 {
+    let i = floor(x);
+    let f = x - i;
+    let a = hash01(u32(i32(i)) ^ seed);
+    let b = hash01(u32(i32(i) + 1) ^ seed);
+    return mix(a, b, f * f * (3.0 - 2.0 * f));
+}

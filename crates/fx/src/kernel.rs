@@ -12,6 +12,14 @@ const WORKGROUP: u32 = 8;
 /// WGSL shared by every kernel (color conversions, helpers).
 const COMMON: &str = include_str!("shaders/common.wgsl");
 
+/// Compiles WGSL with the shared helpers prepended.
+pub fn shader_module(device: &wgpu::Device, label: &str, source: &str) -> wgpu::ShaderModule {
+    device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some(label),
+        source: wgpu::ShaderSource::Wgsl(format!("{COMMON}\n{source}").into()),
+    })
+}
+
 /// A compute pipeline with an auto-derived layout using bind group 0.
 ///
 /// Convention: the shader declares its resources as `@group(0) @binding(i)` in the same order
@@ -23,10 +31,7 @@ pub struct Kernel {
 
 impl Kernel {
     pub fn new(device: &wgpu::Device, label: &str, source: &str, entry: &str) -> Self {
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(label),
-            source: wgpu::ShaderSource::Wgsl(format!("{COMMON}\n{source}").into()),
-        });
+        let module = shader_module(device, label, source);
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some(label),
             layout: None,
@@ -41,6 +46,11 @@ impl Kernel {
     /// Records one dispatch covering every pixel of the frame.
     pub fn dispatch(&self, f: &mut Frame, resources: &[Res]) {
         let size = f.size;
+        self.dispatch_size(f, resources, size);
+    }
+
+    /// Records one dispatch with one invocation per element of a `size` grid.
+    pub fn dispatch_size(&self, f: &mut Frame, resources: &[Res], size: (u32, u32)) {
         let views: Vec<_> = resources
             .iter()
             .map(|r| match r {
@@ -94,13 +104,18 @@ impl Frame<'_> {
     pub fn texture(&self, format: wgpu::TextureFormat) -> wgpu::Texture {
         self.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
-            size: wgpu::Extent3d { width: self.size.0, height: self.size.1, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width: self.size.0,
+                height: self.size.1,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::STORAGE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         })
@@ -110,15 +125,17 @@ impl Frame<'_> {
         self.texture(WORK_FORMAT)
     }
 
-    /// Uniform buffer for the shader-side `struct U { p0: vec4<f32>, p1: vec4<f32> }`.
+    /// Uniform buffer for the shader-side `struct U { p0: vec4<f32>, p1: vec4<f32>, ... }`
+    /// (up to four vec4s; shaders may declare fewer).
     pub fn uniform(&self, values: &[f32]) -> wgpu::Buffer {
-        let mut padded = [0f32; 8];
+        let mut padded = [0f32; 16];
         padded[..values.len()].copy_from_slice(values);
-        self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&padded),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        self.device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&padded),
+                usage: wgpu::BufferUsages::UNIFORM,
+            })
     }
 }
 

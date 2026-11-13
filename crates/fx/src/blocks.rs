@@ -4,13 +4,24 @@ use crate::kernel::{Frame, Kernel, Res};
 
 macro_rules! kernel {
     ($device:expr, $name:literal) => {
-        Kernel::new($device, $name, include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/", $name, ".wgsl")), "main")
+        Kernel::new(
+            $device,
+            $name,
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/shaders/",
+                $name,
+                ".wgsl"
+            )),
+            "main",
+        )
     };
 }
 pub(crate) use kernel;
 
 pub struct Blocks {
     to_oklab: Kernel,
+    from_oklab: Kernel,
     sst: Kernel,
     blur: Kernel,
     tfm: Kernel,
@@ -23,6 +34,7 @@ impl Blocks {
     pub fn new(device: &wgpu::Device) -> Self {
         Self {
             to_oklab: kernel!(device, "blocks/to_oklab"),
+            from_oklab: kernel!(device, "blocks/from_oklab"),
             sst: kernel!(device, "blocks/sst"),
             blur: kernel!(device, "blocks/blur"),
             tfm: kernel!(device, "blocks/tfm"),
@@ -35,9 +47,17 @@ impl Blocks {
         }
     }
 
-    pub fn to_oklab(&self, f: &mut Frame, linear: &wgpu::Texture) -> wgpu::Texture {
+    pub fn linear_to_oklab(&self, f: &mut Frame, linear: &wgpu::Texture) -> wgpu::Texture {
         let out = f.work_texture();
-        self.to_oklab.dispatch(f, &[Res::Tex(linear), Res::Tex(&out)]);
+        self.to_oklab
+            .dispatch(f, &[Res::Tex(linear), Res::Tex(&out)]);
+        out
+    }
+
+    pub fn oklab_to_linear(&self, f: &mut Frame, lab: &wgpu::Texture) -> wgpu::Texture {
+        let out = f.work_texture();
+        self.from_oklab
+            .dispatch(f, &[Res::Tex(lab), Res::Tex(&out)]);
         out
     }
 
@@ -47,8 +67,10 @@ impl Blocks {
         let out = f.work_texture();
         let ux = f.uniform(&[1.0, 0.0, sigma]);
         let uy = f.uniform(&[0.0, 1.0, sigma]);
-        self.blur.dispatch(f, &[Res::Tex(src), Res::Tex(&tmp), Res::Buf(&ux)]);
-        self.blur.dispatch(f, &[Res::Tex(&tmp), Res::Tex(&out), Res::Buf(&uy)]);
+        self.blur
+            .dispatch(f, &[Res::Tex(src), Res::Tex(&tmp), Res::Buf(&ux)]);
+        self.blur
+            .dispatch(f, &[Res::Tex(&tmp), Res::Tex(&out), Res::Buf(&uy)]);
         out
     }
 
@@ -78,7 +100,16 @@ impl Blocks {
         for _ in 0..iterations {
             for u in [&ug, &ut] {
                 let out = f.work_texture();
-                self.fbl.dispatch(f, &[Res::Tex(&cur), Res::Tex(tfm), Res::Smp(&self.linear), Res::Tex(&out), Res::Buf(u)]);
+                self.fbl.dispatch(
+                    f,
+                    &[
+                        Res::Tex(&cur),
+                        Res::Tex(tfm),
+                        Res::Smp(&self.linear),
+                        Res::Tex(&out),
+                        Res::Buf(u),
+                    ],
+                );
                 cur = out;
             }
         }

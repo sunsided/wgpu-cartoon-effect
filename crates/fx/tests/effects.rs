@@ -21,7 +21,12 @@ fn identity_round_trips() {
     p.set_image(&img, w, h);
     p.render("identity", &Params::new()).unwrap();
     let out = p.read_output().unwrap();
-    let max_err = img.iter().zip(&out).map(|(a, b)| a.abs_diff(*b)).max().unwrap();
+    let max_err = img
+        .iter()
+        .zip(&out)
+        .map(|(a, b)| a.abs_diff(*b))
+        .max()
+        .unwrap();
     assert!(max_err <= 1, "max error {max_err}");
 }
 
@@ -34,7 +39,11 @@ fn every_effect_runs() {
         p.render(e.key, &Params::new()).unwrap();
         let out = p.read_output().unwrap();
         assert_eq!(out.len(), img.len(), "{}", e.key);
-        assert!(out.chunks(4).any(|c| c != &out[..4]), "{} output is constant", e.key);
+        assert!(
+            out.chunks(4).any(|c| c != &out[..4]),
+            "{} output is constant",
+            e.key
+        );
     }
 }
 
@@ -43,5 +52,8 @@ fn unknown_effect_errors() {
     let mut p = processor();
     let (img, w, h) = pattern();
     p.set_image(&img, w, h);
-    assert!(matches!(p.render("nope", &Params::new()), Err(fx::Error::UnknownEffect(_))));
+    assert!(matches!(
+        p.render("nope", &Params::new()),
+        Err(fx::Error::UnknownEffect(_))
+    ));
 }

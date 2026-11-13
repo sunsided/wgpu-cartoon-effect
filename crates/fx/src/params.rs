@@ -19,7 +19,9 @@ pub struct ParamDesc {
 impl ParamDesc {
     /// The value from `params`, clamped to range, or the default.
     pub fn get(&self, params: &Params) -> f32 {
-        params.get(self.key).map_or(self.default, |v| v.clamp(self.min, self.max))
+        params
+            .get(self.key)
+            .map_or(self.default, |v| v.clamp(self.min, self.max))
     }
 }
 

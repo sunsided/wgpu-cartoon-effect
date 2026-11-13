@@ -45,8 +45,18 @@ pub struct Processor {
 impl Processor {
     pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
         Self {
-            decode: Kernel::new(&device, "decode", include_str!("shaders/decode.wgsl"), "decode"),
-            encode: Kernel::new(&device, "encode", include_str!("shaders/encode.wgsl"), "encode"),
+            decode: Kernel::new(
+                &device,
+                "decode",
+                include_str!("shaders/decode.wgsl"),
+                "decode",
+            ),
+            encode: Kernel::new(
+                &device,
+                "encode",
+                include_str!("shaders/encode.wgsl"),
+                "encode",
+            ),
             effects: effects::Effects::new(&device),
             device,
             queue,
@@ -58,7 +68,8 @@ impl Processor {
     /// Creates a processor on a fresh device without any surface.
     /// Set `WGPU_FORCE_FALLBACK_ADAPTER=1` to use a software adapter.
     pub async fn headless() -> Result<Self, Error> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
+        let instance =
+            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -87,8 +98,16 @@ impl Processor {
 
     /// Uploads a tightly packed 8-bit sRGB RGBA image.
     pub fn set_image(&mut self, rgba: &[u8], width: u32, height: u32) {
-        assert_eq!(rgba.len(), (width * height * 4) as usize, "rgba buffer size mismatch");
-        let size = wgpu::Extent3d { width, height, depth_or_array_layers: 1 };
+        assert_eq!(
+            rgba.len(),
+            (width * height * 4) as usize,
+            "rgba buffer size mismatch"
+        );
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
         let texture = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("source"),
             size,
@@ -102,7 +121,11 @@ impl Processor {
         self.queue.write_texture(
             texture.as_image_copy(),
             rgba,
-            wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(width * 4), rows_per_image: None },
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(width * 4),
+                rows_per_image: None,
+            },
             size,
         );
         self.source = Some(texture);
@@ -118,10 +141,12 @@ impl Processor {
             size: (source.width(), source.height()),
         };
         let linear = f.work_texture();
-        self.decode.dispatch(&mut f, &[Res::Tex(source), Res::Tex(&linear)]);
+        self.decode
+            .dispatch(&mut f, &[Res::Tex(source), Res::Tex(&linear)]);
         let result = self.effects.run(effect, &mut f, &linear, params)?;
         let output = f.texture(OUTPUT_FORMAT);
-        self.encode.dispatch(&mut f, &[Res::Tex(&result), Res::Tex(&output)]);
+        self.encode
+            .dispatch(&mut f, &[Res::Tex(&result), Res::Tex(&output)]);
         self.queue.submit([f.encoder.finish()]);
         Ok(self.output.insert(output))
     }
@@ -143,21 +168,36 @@ impl Processor {
             output.as_image_copy(),
             wgpu::TexelCopyBufferInfo {
                 buffer: &buffer,
-                layout: wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(padded), rows_per_image: None },
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded),
+                    rows_per_image: None,
+                },
             },
             output.size(),
         );
         self.queue.submit([encoder.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();
-        buffer.slice(..).map_async(wgpu::MapMode::Read, move |r| _ = tx.send(r));
+        buffer
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |r| _ = tx.send(r));
         self.device
-            .poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
             .map_err(|e| Error::Readback(e.to_string()))?;
         rx.recv()
             .map_err(|e| Error::Readback(e.to_string()))?
             .map_err(|e| Error::Readback(e.to_string()))?;
-        let mapped = buffer.get_mapped_range(..).map_err(|e| Error::Readback(e.to_string()))?;
-        Ok(mapped.chunks(padded as usize).flat_map(|row| &row[..(w * 4) as usize]).copied().collect())
+        let mapped = buffer
+            .get_mapped_range(..)
+            .map_err(|e| Error::Readback(e.to_string()))?;
+        Ok(mapped
+            .chunks(padded as usize)
+            .flat_map(|row| &row[..(w * 4) as usize])
+            .copied()
+            .collect())
     }
 }
 

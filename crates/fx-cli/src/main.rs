@@ -37,7 +37,9 @@ fn main() -> anyhow::Result<()> {
         println!("{}", serde_json::to_string_pretty(fx::effects())?);
         return Ok(());
     }
-    let (Some(effect), Some(input)) = (args.effect, args.input) else { unreachable!("clap enforces") };
+    let (Some(effect), Some(input)) = (args.effect, args.input) else {
+        unreachable!("clap enforces")
+    };
     let Some(info) = fx::effects().iter().find(|e| e.key == effect) else {
         bail!("unknown effect {effect:?}, see --list");
     };
@@ -47,7 +49,9 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    let img = image::open(&input).with_context(|| format!("reading {}", input.display()))?.into_rgba8();
+    let img = image::open(&input)
+        .with_context(|| format!("reading {}", input.display()))?
+        .into_rgba8();
     let mut p = pollster::block_on(Processor::headless())?;
     p.set_image(&img, img.width(), img.height());
     let start = std::time::Instant::now();
