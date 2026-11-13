@@ -6,8 +6,9 @@
 use std::cell::RefCell;
 
 use super::p;
+use super::paint::{Paint, STROKE_SIZE, StrokeStyle};
 use crate::blocks::Blocks;
-use crate::kernel::{Frame, Kernel, Res};
+use crate::kernel::{Frame, Kernel, Res, view};
 use crate::{EffectInfo, ParamDesc, Params};
 
 const COUNT: ParamDesc = p("count", "Splats", 100.0, 30000.0, 100.0, 1500.0);
@@ -17,12 +18,28 @@ const EDGE_BIAS: ParamDesc = p("edge_bias", "Detail bias", 0.0, 1.0, 0.01, 0.7);
 const MAX_SIGMA: ParamDesc = p("max_sigma", "Max splat size", 2.0, 64.0, 1.0, 24.0);
 const BLOB_SCALE: ParamDesc = p("blob_scale", "Render scale", 0.3, 2.0, 0.01, 0.6);
 const SEED: ParamDesc = p("seed", "Seed", 0.0, 100.0, 1.0, 0.0);
+const STYLE: ParamDesc = p("style", "Render as strokes", 0.0, 1.0, 1.0, 0.0);
+const STROKE_LENGTH: ParamDesc = p("stroke_length", "Stroke length", 0.2, 3.0, 0.05, 0.8);
+const STROKE_WIDTH: ParamDesc = p("stroke_width", "Stroke width", 0.5, 4.0, 0.05, 3.0);
+const BRISTLES: ParamDesc = p("bristles", "Bristles", 0.0, 1.0, 0.01, 0.6);
+const DRY: ParamDesc = p("dry", "Dry brush", 0.0, 1.0, 0.01, 0.3);
 
 pub const INFO: EffectInfo = EffectInfo {
     key: "splat",
     label: "Gaussian splats",
     params: &[
-        COUNT, ITERATIONS, LR, EDGE_BIAS, MAX_SIGMA, BLOB_SCALE, SEED,
+        COUNT,
+        ITERATIONS,
+        LR,
+        EDGE_BIAS,
+        MAX_SIGMA,
+        BLOB_SCALE,
+        SEED,
+        STYLE,
+        STROKE_LENGTH,
+        STROKE_WIDTH,
+        BRISTLES,
+        DRY,
     ],
 };
 
@@ -50,6 +67,7 @@ pub struct Splat {
     backward: Kernel,
     adam: Kernel,
     respawn: Kernel,
+    to_strokes: Kernel,
     /// Last fitted splats, so changing only the render scale doesn't re-run the fit.
     cache: RefCell<Option<(FitKey, wgpu::Buffer)>>,
 }
@@ -78,6 +96,7 @@ impl Splat {
             backward: splat_kernel!(device, "backward"),
             adam: splat_kernel!(device, "adam"),
             respawn: splat_kernel!(device, "respawn"),
+            to_strokes: splat_kernel!(device, "to_strokes"),
             cache: RefCell::new(None),
         }
     }
@@ -85,6 +104,7 @@ impl Splat {
     pub fn run(
         &self,
         b: &Blocks,
+        paint: &Paint,
         f: &mut Frame,
         input: &wgpu::Texture,
         p: &Params,
@@ -152,11 +172,11 @@ impl Splat {
                     Res::Buf(&u),
                 ],
             );
+            cw.clone()
         };
 
         if fitted {
-            forward(f, BLOB_SCALE.get(p));
-            return b.oklab_to_linear(f, &cw);
+            return self.finish(b, paint, f, p, &splats, &background, forward);
         }
 
         let tfm = b.flow(f, &target, 1.0);
@@ -241,9 +261,81 @@ impl Splat {
                 );
             }
         }
-        forward(f, BLOB_SCALE.get(p));
         *self.cache.borrow_mut() = Some((key, splats.clone()));
-        b.oklab_to_linear(f, &cw)
+        self.finish(b, paint, f, p, &splats, &background, forward)
+    }
+
+    /// Renders the fitted splats, as Gaussians or as brush strokes.
+    #[allow(clippy::too_many_arguments)]
+    fn finish(
+        &self,
+        b: &Blocks,
+        paint: &Paint,
+        f: &mut Frame,
+        p: &Params,
+        splats: &wgpu::Buffer,
+        background: &wgpu::Texture,
+        forward: impl Fn(&mut Frame, f32) -> wgpu::Texture,
+    ) -> wgpu::Texture {
+        if STYLE.get(p) < 0.5 {
+            let cw = forward(f, BLOB_SCALE.get(p));
+            return b.oklab_to_linear(f, &cw);
+        }
+        let n = COUNT.get(p) as u32;
+        let strokes = f.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("splat strokes"),
+            size: u64::from(n) * STROKE_SIZE,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+        let u = f.uniform(&[n as f32, STROKE_LENGTH.get(p), STROKE_WIDTH.get(p)]);
+        self.to_strokes.dispatch_linear(
+            f,
+            &[Res::Buf(splats), Res::Buf(&strokes), Res::Buf(&u)],
+            n,
+        );
+
+        // Underpaint with the blurred background, then strokes from broad to fine so detail stays on top.
+        let canvas = f.work_texture();
+        f.encoder.copy_texture_to_texture(
+            background.as_image_copy(),
+            canvas.as_image_copy(),
+            background.size(),
+        );
+        let canvas_view = view(&canvas);
+        let style = StrokeStyle {
+            opacity: 1.0,
+            bristles: BRISTLES.get(p),
+            dry: DRY.get(p),
+            jitter_l: 0.02,
+            jitter_ab: 0.005,
+            shuffle: SEED.get(p) * 7919.0 + 1.0,
+        };
+        for (i, radii) in [
+            (16.0, f32::INFINITY),
+            (8.0, 16.0),
+            (4.0, 8.0),
+            (2.0, 4.0),
+            (0.0, 2.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let style = StrokeStyle {
+                shuffle: style.shuffle + i as f32 * 104729.0,
+                ..style
+            };
+            paint.draw(
+                f,
+                &canvas_view,
+                &strokes,
+                n,
+                &style,
+                radii,
+                wgpu::LoadOp::Load,
+            );
+        }
+        b.oklab_to_linear(f, &canvas)
     }
 }
 

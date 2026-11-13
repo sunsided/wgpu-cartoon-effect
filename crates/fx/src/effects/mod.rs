@@ -72,7 +72,7 @@ impl Effects {
             "cartoon" => self.cartoon.run(b, f, input, params),
             "kuwahara" => self.kuwahara.run(b, f, input, params),
             "paint" => self.paint.run(b, &self.kuwahara, f, input, params),
-            "splat" => self.splat.run(b, f, input, params),
+            "splat" => self.splat.run(b, &self.paint, f, input, params),
             _ => return Err(Error::UnknownEffect(key.to_owned())),
         })
     }

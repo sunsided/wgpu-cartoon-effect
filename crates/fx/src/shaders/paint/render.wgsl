@@ -4,7 +4,7 @@
 const MAX_POINTS: u32 = 16u;
 
 struct Stroke {
-    color: vec4<f32>,
+    color: vec4<f32>,  // Oklab + opacity
     n: u32,
     radius: f32,
     seed: u32,
@@ -12,7 +12,8 @@ struct Stroke {
     pts: array<vec2<f32>, 16>,
 }
 
-// p0 = (opacity, bristles, dryness, value_jitter), p1 = (count, bits, seed, chroma_jitter), p2 = (width, height)
+// p0 = (opacity, bristles, dryness, value_jitter), p1 = (count, bits, seed, chroma_jitter),
+// p2 = (width, height, min_radius, max_radius): strokes outside [min, max) are skipped.
 struct U { p0: vec4<f32>, p1: vec4<f32>, p2: vec4<f32> }
 @group(0) @binding(0) var<storage, read> strokes: array<Stroke>;
 @group(0) @binding(1) var<uniform> u: U;
@@ -59,7 +60,7 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
     let n = strokes[si].n;
     let r = strokes[si].radius;
     let seed = strokes[si].seed;
-    if n < 2u {
+    if n < 2u || r < u.p2.z || r >= u.p2.w {
         out.pos = vec4(2.0, 2.0, 2.0, 1.0);
         return out;
     }
@@ -98,7 +99,7 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut
     c.x += (hash01(seed ^ 0x68e31da4u) - 0.5) * u.p0.w;
     c.y += (hash01(seed ^ 0xb5297a4du) - 0.5) * u.p1.w;
     c.z += (hash01(seed ^ 0x1b56c4e9u) - 0.5) * u.p1.w;
-    out.color = vec4(c, 1.0);
+    out.color = vec4(c, strokes[si].color.a);
     out.coord = vec4(along, side, len, r);
     out.seed = seed;
     return out;
@@ -122,7 +123,7 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     let streak = noise1(v * bristle_count * 2.7 + along * 0.02, in.seed ^ 0x27d4eb2fu);
     let s = clamp(along / max(len + r, 1.0), 0.0, 1.0);
     let bristles = u.p0.y;
-    var alpha = coverage * u.p0.x * mix(1.0, 0.35 + 0.65 * b, bristles);
+    var alpha = coverage * u.p0.x * in.color.a * mix(1.0, 0.35 + 0.65 * b, bristles);
     // Dry brush: paint runs out toward the end of the stroke, first between the bristles.
     alpha *= 1.0 - u.p0.z * smoothstep(0.25, 1.0, s) * (1.0 - streak);
 

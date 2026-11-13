@@ -5,7 +5,7 @@
 const MAX_POINTS: u32 = 16u;
 
 struct Stroke {
-    color: vec4<f32>,  // Oklab + unused
+    color: vec4<f32>,  // Oklab + opacity
     n: u32,            // number of points, 0 = no stroke
     radius: f32,
     seed: u32,
@@ -60,7 +60,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     let color = at(reference, start);
     var s: Stroke;
-    s.color = color;
+    s.color = vec4(color.rgb, 1.0);
     s.radius = r;
     s.seed = seed;
     s.pts[0] = start;

@@ -32,11 +32,22 @@ pub const INFO: EffectInfo = EffectInfo {
 };
 
 /// Bytes per `Stroke` in the shaders (vec4 + 4×u32 + 16×vec2).
-const STROKE_SIZE: u64 = 16 + 16 + 16 * 8;
+pub(super) const STROKE_SIZE: u64 = 16 + 16 + 16 * 8;
 /// Strip vertices per stroke: two per point plus both caps.
 const STRIP_VERTICES: u32 = 2 * (16 + 2);
 /// Smallest brush radius; finer grids get expensive and look like noise.
 const MIN_RADIUS: f32 = 2.0;
+
+/// How strokes are rendered; see shaders/paint/render.wgsl.
+pub struct StrokeStyle {
+    pub opacity: f32,
+    pub bristles: f32,
+    pub dry: f32,
+    pub jitter_l: f32,
+    pub jitter_ab: f32,
+    /// Seed of the draw-order permutation.
+    pub shuffle: f32,
+}
 
 pub struct Paint {
     stroke: Kernel,
@@ -100,7 +111,6 @@ impl Paint {
         };
         let canvas = f.work_texture();
         let canvas_view = view(&canvas);
-        let (w, h) = f.size;
         let seed = SEED.get(p);
 
         for layer in 0..LAYERS.get(p) as u32 {
@@ -109,8 +119,8 @@ impl Paint {
             // Big brushes follow broad structure, small ones the details.
             let tfm = b.flow(f, &reference, (0.5 * r).max(1.0));
 
-            let cols = (w as f32 / r).ceil() as u32;
-            let rows = (h as f32 / r).ceil() as u32;
+            let cols = (f.size.0 as f32 / r).ceil() as u32;
+            let rows = (f.size.1 as f32 / r).ceil() as u32;
             let count = cols * rows;
             let strokes = f.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("strokes"),
@@ -141,34 +151,6 @@ impl Paint {
                 (cols, rows),
             );
 
-            let bits = count.next_power_of_two().trailing_zeros().max(1);
-            let u = f.uniform(&[
-                OPACITY.get(p),
-                BRISTLES.get(p),
-                DRY.get(p),
-                JITTER_L.get(p),
-                count as f32,
-                bits as f32,
-                // Different shuffle per layer and seed.
-                (seed + 1.0) * 7919.0 + layer as f32 * 104729.0,
-                JITTER_AB.get(p),
-                w as f32,
-                h as f32,
-            ]);
-            let bind_group = f.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: None,
-                layout: &self.render.get_bind_group_layout(0),
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: strokes.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: u.as_entire_binding(),
-                    },
-                ],
-            });
             let load = if layer == 0 {
                 // Off-white paper in Oklab; the first layer covers it anyway.
                 wgpu::LoadOp::Clear(wgpu::Color {
@@ -180,23 +162,85 @@ impl Paint {
             } else {
                 wgpu::LoadOp::Load
             };
-            let mut pass = f.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("paint"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &canvas_view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            pass.set_pipeline(&self.render);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.draw(0..STRIP_VERTICES, 0..count);
+            let style = StrokeStyle {
+                opacity: OPACITY.get(p),
+                bristles: BRISTLES.get(p),
+                dry: DRY.get(p),
+                jitter_l: JITTER_L.get(p),
+                jitter_ab: JITTER_AB.get(p),
+                // Different shuffle per layer and seed.
+                shuffle: (seed + 1.0) * 7919.0 + layer as f32 * 104729.0,
+            };
+            self.draw(
+                f,
+                &canvas_view,
+                &strokes,
+                count,
+                &style,
+                (0.0, f32::INFINITY),
+                load,
+            );
         }
         b.oklab_to_linear(f, &canvas)
+    }
+
+    /// Draws `count` strokes from `strokes` (layout of `Stroke` in the shaders) onto an
+    /// Oklab canvas, skipping strokes whose radius is outside `radii` (half-open).
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw(
+        &self,
+        f: &mut Frame,
+        canvas: &wgpu::TextureView,
+        strokes: &wgpu::Buffer,
+        count: u32,
+        style: &StrokeStyle,
+        radii: (f32, f32),
+        load: wgpu::LoadOp<wgpu::Color>,
+    ) {
+        let bits = count.next_power_of_two().trailing_zeros().max(1);
+        let u = f.uniform(&[
+            style.opacity,
+            style.bristles,
+            style.dry,
+            style.jitter_l,
+            count as f32,
+            bits as f32,
+            style.shuffle,
+            style.jitter_ab,
+            f.size.0 as f32,
+            f.size.1 as f32,
+            radii.0,
+            radii.1.min(f32::MAX),
+        ]);
+        let bind_group = f.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &self.render.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: strokes.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: u.as_entire_binding(),
+                },
+            ],
+        });
+        let mut pass = f.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("strokes"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: canvas,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        pass.set_pipeline(&self.render);
+        pass.set_bind_group(0, &bind_group, &[]);
+        pass.draw(0..STRIP_VERTICES, 0..count);
     }
 }

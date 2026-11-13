@@ -70,7 +70,10 @@ fn paint_is_deterministic() {
     let (img, w, h) = pattern();
     p.set_image(&img, w, h);
     assert_eq!(render(&mut p, "paint", &[]), render(&mut p, "paint", &[]));
-    assert_ne!(render(&mut p, "paint", &[]), render(&mut p, "paint", &[("seed", 1.0)]));
+    assert_ne!(
+        render(&mut p, "paint", &[]),
+        render(&mut p, "paint", &[("seed", 1.0)])
+    );
 }
 
 #[test]
@@ -82,9 +85,19 @@ fn splat_render_scale_reuses_fit() {
     let a = render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)]);
     let b = render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 0.5)]);
     assert_ne!(a, b);
-    assert_eq!(a, render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)]));
+    assert_eq!(
+        a,
+        render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)])
+    );
+    // Stroke rendering reuses the same fit.
+    let strokes = render(&mut p, "splat", &[fit[0], fit[1], ("style", 1.0)]);
+    assert_ne!(a, strokes);
+    assert!(strokes.chunks(4).any(|c| c != &strokes[..4]), "stroke render is constant");
     // A new image must invalidate the cached fit.
     let flipped: Vec<u8> = img.chunks(4).rev().flatten().copied().collect();
     p.set_image(&flipped, w, h);
-    assert_ne!(a, render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)]));
+    assert_ne!(
+        a,
+        render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)])
+    );
 }
