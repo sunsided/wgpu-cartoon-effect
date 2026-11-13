@@ -1,6 +1,7 @@
 mod cartoon;
 mod kuwahara;
 mod paint;
+mod splat;
 
 use crate::blocks::Blocks;
 use crate::kernel::Frame;
@@ -34,6 +35,7 @@ pub static EFFECTS: &[EffectInfo] = &[
     cartoon::INFO,
     kuwahara::INFO,
     paint::INFO,
+    splat::INFO,
 ];
 
 /// Compiled pipelines of every effect.
@@ -42,6 +44,7 @@ pub struct Effects {
     cartoon: cartoon::Cartoon,
     kuwahara: kuwahara::Kuwahara,
     paint: paint::Paint,
+    splat: splat::Splat,
 }
 
 impl Effects {
@@ -51,6 +54,7 @@ impl Effects {
             cartoon: cartoon::Cartoon::new(device),
             kuwahara: kuwahara::Kuwahara::new(device),
             paint: paint::Paint::new(device),
+            splat: splat::Splat::new(device),
         }
     }
 
@@ -68,6 +72,7 @@ impl Effects {
             "cartoon" => self.cartoon.run(b, f, input, params),
             "kuwahara" => self.kuwahara.run(b, f, input, params),
             "paint" => self.paint.run(b, &self.kuwahara, f, input, params),
+            "splat" => self.splat.run(b, f, input, params),
             _ => return Err(Error::UnknownEffect(key.to_owned())),
         })
     }

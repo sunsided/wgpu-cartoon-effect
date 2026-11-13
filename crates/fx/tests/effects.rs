@@ -57,3 +57,34 @@ fn unknown_effect_errors() {
         Err(fx::Error::UnknownEffect(_))
     ));
 }
+
+fn render(p: &mut Processor, effect: &str, params: &[(&str, f32)]) -> Vec<u8> {
+    let params: Params = params.iter().map(|(k, v)| (k.to_string(), *v)).collect();
+    p.render(effect, &params).unwrap();
+    p.read_output().unwrap()
+}
+
+#[test]
+fn paint_is_deterministic() {
+    let mut p = processor();
+    let (img, w, h) = pattern();
+    p.set_image(&img, w, h);
+    assert_eq!(render(&mut p, "paint", &[]), render(&mut p, "paint", &[]));
+    assert_ne!(render(&mut p, "paint", &[]), render(&mut p, "paint", &[("seed", 1.0)]));
+}
+
+#[test]
+fn splat_render_scale_reuses_fit() {
+    let mut p = processor();
+    let (img, w, h) = pattern();
+    p.set_image(&img, w, h);
+    let fit = [("count", 200.0), ("iterations", 30.0)];
+    let a = render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)]);
+    let b = render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 0.5)]);
+    assert_ne!(a, b);
+    assert_eq!(a, render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)]));
+    // A new image must invalidate the cached fit.
+    let flipped: Vec<u8> = img.chunks(4).rev().flatten().copied().collect();
+    p.set_image(&flipped, w, h);
+    assert_ne!(a, render(&mut p, "splat", &[fit[0], fit[1], ("blob_scale", 1.0)]));
+}

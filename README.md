@@ -9,6 +9,7 @@ Successor of [opencv-cartoon-effect](https://github.com/sunsided/opencv-cartoon-
 | `cartoon` | Flow-based bilateral filter in Oklab, soft luminance quantization, FDoG/XDoG lines along the tangent flow |
 | `kuwahara` | Anisotropic Kuwahara filter with polynomial sector weights (Kyprianidis et al.)                    |
 | `paint`   | Coarse-to-fine curved brush strokes (Hertzmann 1998): placed by a compute pass, drawn as instanced bristle-textured strips |
+| `splat`   | N anisotropic 2D Gaussians fitted to the image with Adam; few splats or a shrunken render scale abstract it |
 
 ## Layout
 

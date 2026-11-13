@@ -49,6 +49,16 @@ impl Kernel {
         self.dispatch_size(f, resources, size);
     }
 
+    /// Records a 1D dispatch of `n` invocations, for shaders that index by
+    /// `workgroup_id.x * 64 + local_invocation_index`.
+    pub fn dispatch_linear(&self, f: &mut Frame, resources: &[Res], n: u32) {
+        self.dispatch_size(
+            f,
+            resources,
+            (n.div_ceil(WORKGROUP * WORKGROUP) * WORKGROUP, 1),
+        );
+    }
+
     /// Records one dispatch with one invocation per element of a `size` grid.
     pub fn dispatch_size(&self, f: &mut Frame, resources: &[Res], size: (u32, u32)) {
         let views: Vec<_> = resources
@@ -96,6 +106,8 @@ pub struct Frame<'a> {
     pub device: &'a wgpu::Device,
     pub encoder: wgpu::CommandEncoder,
     pub size: (u32, u32),
+    /// Changes whenever a new image is set; lets effects cache work per image.
+    pub image_id: u64,
 }
 
 impl Frame<'_> {

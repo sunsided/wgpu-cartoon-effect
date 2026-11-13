@@ -36,6 +36,7 @@ pub struct Processor {
     device: wgpu::Device,
     queue: wgpu::Queue,
     source: Option<wgpu::Texture>,
+    image_id: u64,
     output: Option<wgpu::Texture>,
     decode: Kernel,
     encode: Kernel,
@@ -61,6 +62,7 @@ impl Processor {
             device,
             queue,
             source: None,
+            image_id: 0,
             output: None,
         }
     }
@@ -129,6 +131,7 @@ impl Processor {
             size,
         );
         self.source = Some(texture);
+        self.image_id += 1;
         self.output = None;
     }
 
@@ -139,6 +142,7 @@ impl Processor {
             device: &self.device,
             encoder: self.device.create_command_encoder(&Default::default()),
             size: (source.width(), source.height()),
+            image_id: self.image_id,
         };
         let linear = f.work_texture();
         self.decode
