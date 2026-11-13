@@ -25,6 +25,8 @@ const SEED: ParamDesc = p("seed", "Seed", 0.0, 100.0, 1.0, 0.0);
 pub const INFO: EffectInfo = EffectInfo {
     key: "paint",
     label: "Brush strokes",
+    description: "Paints the image coarse to fine with curved, bristled strokes that follow its edges, \
+                  adding smaller strokes only where the canvas still differs from the photo.",
     params: &[
         BRUSH, LAYERS, THRESHOLD, BLUR, MAX_LEN, MIN_LEN, CURVATURE, OPACITY, BRISTLES, DRY,
         JITTER_L, JITTER_AB, PREFILTER, SEED,

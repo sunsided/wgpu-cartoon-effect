@@ -101,20 +101,27 @@
 	ondrop={onDrop}
 />
 
-<svelte:head><title>fx</title></svelte:head>
+<svelte:head><title>Brushwork</title></svelte:head>
 
 <div class={['app', { dragging }]}>
 	<aside>
-		<h1>fx</h1>
+		<header>
+			<h1>Brushwork</h1>
+			<p>Painterly image styles, rendered on your GPU</p>
+		</header>
 
 		<label class="field">
-			<span>Effect</span>
+			<span>Style</span>
 			<select bind:value={effectKey} disabled={!renderer}>
 				{#each effects as e (e.key)}
 					<option value={e.key}>{e.label}</option>
 				{/each}
 			</select>
 		</label>
+
+		{#if current}
+			<p class="description">{current.description}</p>
+		{/if}
 
 		{#if current && values[current.key]}
 			{#each current.params as p (p.key)}
@@ -175,9 +182,15 @@
 		background: #1e1f23;
 		overflow-y: auto;
 	}
+	header p,
+	.description {
+		margin: 0;
+		color: #9a9aa2;
+		font-size: 13px;
+	}
 	h1 {
 		margin: 0;
-		font-size: 1.1rem;
+		font-size: 1.2rem;
 	}
 	.field {
 		display: flex;

@@ -30,6 +30,7 @@ pub static EFFECTS: &[EffectInfo] = &[
     EffectInfo {
         key: "identity",
         label: "Original",
+        description: "The unprocessed image.",
         params: &[],
     },
     cartoon::INFO,

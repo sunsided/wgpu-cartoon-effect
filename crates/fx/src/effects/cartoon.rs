@@ -22,6 +22,8 @@ const LINE_STRENGTH: ParamDesc = p("line_strength", "Line strength", 0.0, 1.0, 0
 pub const INFO: EffectInfo = EffectInfo {
     key: "cartoon",
     label: "Cartoon",
+    description: "Smooths regions while keeping edges, flattens shading into a few soft tones and inks \
+                  lines along the flow of the image's edges.",
     params: &[
         FLOW_SIGMA,
         ITERATIONS,

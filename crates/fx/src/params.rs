@@ -29,5 +29,7 @@ impl ParamDesc {
 pub struct EffectInfo {
     pub key: &'static str,
     pub label: &'static str,
+    /// One or two sentences for frontends: what the effect does.
+    pub description: &'static str,
     pub params: &'static [ParamDesc],
 }

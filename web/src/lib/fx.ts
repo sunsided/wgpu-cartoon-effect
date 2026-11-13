@@ -14,6 +14,7 @@ export interface ParamDesc {
 export interface EffectInfo {
 	key: string;
 	label: string;
+	description: string;
 	params: ParamDesc[];
 }
 

@@ -27,6 +27,8 @@ const DRY: ParamDesc = p("dry", "Dry brush", 0.0, 1.0, 0.01, 0.3);
 pub const INFO: EffectInfo = EffectInfo {
     key: "splat",
     label: "Gaussian splats",
+    description: "Fits soft 2D Gaussians to the image, then renders them as blobs or as brush strokes. \
+                  Changing a fit setting re-runs the optimizer, which takes a moment.",
     params: &[
         COUNT,
         ITERATIONS,

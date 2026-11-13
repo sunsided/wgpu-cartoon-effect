@@ -15,7 +15,9 @@ const PASSES: ParamDesc = p("passes", "Passes", 1.0, 4.0, 1.0, 1.0);
 
 pub const INFO: EffectInfo = EffectInfo {
     key: "kuwahara",
-    label: "Anisotropic Kuwahara",
+    label: "Oil paint",
+    description: "Anisotropic Kuwahara filter: averages within sectors of an ellipse aligned to local \
+                  structure, so areas flatten into daubs while edges stay crisp.",
     params: &[FLOW_SIGMA, RADIUS, Q, ALPHA, VAR_SCALE, PASSES],
 };
 
