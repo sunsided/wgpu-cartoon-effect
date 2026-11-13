@@ -1,5 +1,5 @@
 // Anisotropic Kuwahara filter with polynomial sector weights
-// (Kyprianidis et al. 2009, 2011). Oklab in, Oklab out.
+// (Kyprianidis et al. 2009, 2010). Oklab in, Oklab out.
 // u.p0 = (radius, q (sharpness), alpha (anisotropy tuning), variance scale).
 
 struct U { p0: vec4<f32>, p1: vec4<f32> }

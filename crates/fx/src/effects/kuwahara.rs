@@ -1,4 +1,4 @@
-//! Anisotropic Kuwahara filter (Kyprianidis et al. 2009) with polynomial weights (2011):
+//! Anisotropic Kuwahara filter (Kyprianidis et al. 2009) with polynomial weights (2010):
 //! oil-paint look, flat regions with crisp, direction-aware edges.
 
 use super::p;

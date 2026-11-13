@@ -92,7 +92,10 @@ fn splat_render_scale_reuses_fit() {
     // Stroke rendering reuses the same fit.
     let strokes = render(&mut p, "splat", &[fit[0], fit[1], ("style", 1.0)]);
     assert_ne!(a, strokes);
-    assert!(strokes.chunks(4).any(|c| c != &strokes[..4]), "stroke render is constant");
+    assert!(
+        strokes.chunks(4).any(|c| c != &strokes[..4]),
+        "stroke render is constant"
+    );
     // A new image must invalidate the cached fit.
     let flipped: Vec<u8> = img.chunks(4).rev().flatten().copied().collect();
     p.set_image(&flipped, w, h);
