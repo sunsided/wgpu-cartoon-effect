@@ -260,9 +260,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sveltejs/kit@npm:^3.0.0":
-  version: 3.2.0
-  resolution: "@sveltejs/kit@npm:3.2.0"
+"@sveltejs/kit@npm:^3.4.0":
+  version: 3.4.0
+  resolution: "@sveltejs/kit@npm:3.4.0"
   dependencies:
     "@jridgewell/trace-mapping": "npm:^0.3.31"
     "@rolldown/pluginutils": "npm:^1.0.1"
@@ -286,7 +286,7 @@ __metadata:
       optional: true
   bin:
     svelte-kit: svelte-kit.js
-  checksum: 10c0/f604c5df59355c2a3451824082ea34f5b63349f6c1d88c77c76f059db2ac0f89ddc8fd04106d1a580d8911bd0c482861554ea5136df5a9274cb5893284ec802d
+  checksum: 10c0/98bcc0269ea76cb26b2c41dfd7f232d935a77498d599f69d05626581bac02131127ff17c49b9756cd3b6ef83d6b213ee7089d3c796504e52e4abf9cd7c137e9d
   languageName: node
   linkType: hard
 
@@ -1058,7 +1058,7 @@ __metadata:
   resolution: "web@workspace:."
   dependencies:
     "@sveltejs/adapter-static": "npm:^4.0.0"
-    "@sveltejs/kit": "npm:^3.0.0"
+    "@sveltejs/kit": "npm:^3.4.0"
     "@sveltejs/vite-plugin-svelte": "npm:^7.2.0"
     "@types/node": "npm:^24"
     fx-wasm: "link:../crates/fx-wasm/pkg"
